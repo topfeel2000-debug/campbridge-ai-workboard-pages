@@ -7,6 +7,47 @@
     <meta name="description" content="영남대학교 외국인 유학생 지원 플랫폼 프로젝트의 일정·진행률·활동 로그·예산을 관리하는 작업보드입니다." />
     <link rel="icon" href="/campbridge-ai-workboard-pages/favicon.svg" type="image/svg+xml" />
     <title>CampBridge AI 프로젝트 작업보드</title>
+    <script>
+      (() => {
+        const oldBackend = "https://campbridgeworkboard.topfeel2000.chatgpt.site";
+        const apiBase = "https://ijmifqgjhbfcjzpdlvoh.supabase.co/functions/v1/workboard-api";
+        const publicKey = "sb_publishable_0tqX91fZ-eTTa_feCjWf5A_AoSWVxBP";
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (input, init = {}) => {
+          const requestUrl = new URL(typeof input === "string" ? input : input.url, window.location.href);
+          if (requestUrl.origin !== oldBackend || !requestUrl.pathname.startsWith("/api/")) return originalFetch(input, init);
+          const headers = new Headers(input instanceof Request ? input.headers : undefined);
+          new Headers(init.headers || {}).forEach((value, key) => headers.set(key, value));
+          headers.set("apikey", publicKey);
+          return originalFetch(apiBase + requestUrl.pathname + requestUrl.search, { ...init, headers, cache: "no-store" });
+        };
+        let lastState = null;
+        let checking = false;
+        const editing = () => {
+          const active = document.activeElement;
+          return active instanceof HTMLElement && (["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName) || active.isContentEditable);
+        };
+        const refreshIfChanged = async () => {
+          if (checking || document.visibilityState !== "visible" || editing()) return;
+          checking = true;
+          try {
+            const headers = { apikey: publicKey };
+            const [dataResponse, budgetResponse] = await Promise.all([
+              originalFetch(apiBase + "/api/data", { headers, cache: "no-store" }),
+              originalFetch(apiBase + "/api/budget", { headers, cache: "no-store" })
+            ]);
+            if (!dataResponse.ok || !budgetResponse.ok) return;
+            const state = JSON.stringify([await dataResponse.json(), await budgetResponse.json()]);
+            if (lastState !== null && state !== lastState) window.location.reload();
+            lastState = state;
+          } catch {}
+          finally { checking = false; }
+        };
+        void refreshIfChanged();
+        window.setInterval(refreshIfChanged, 10000);
+        document.addEventListener("visibilitychange", refreshIfChanged);
+      })();
+    </script>
     <script type="module" crossorigin src="/campbridge-ai-workboard-pages/assets/index-B9YK9DTX.js"></script>
     <link rel="stylesheet" crossorigin href="/campbridge-ai-workboard-pages/assets/index-QSIl1PUl.css">
   </head>
